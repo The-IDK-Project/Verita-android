@@ -5,13 +5,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -25,7 +24,7 @@ fun RoomListScreen(
     navigator: DestinationsNavigator,
     viewModel: RoomListViewModel = hiltViewModel()
 ) {
-    val rooms by viewModel.rooms?.collectAsState(initial = emptyList()) ?: return
+    val rooms = viewModel.rooms?.collectAsState(initial = emptyList())?.value ?: return
 
     Scaffold(
         topBar = {
@@ -33,7 +32,7 @@ fun RoomListScreen(
                 title = { Text("Verita") },
                 actions = {
                     IconButton(onClick = { viewModel.logout() }) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Logout")
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout")
                     }
                 }
             )

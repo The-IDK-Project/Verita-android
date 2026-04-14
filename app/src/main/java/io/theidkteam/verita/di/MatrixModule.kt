@@ -6,7 +6,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import io.theidkteam.verita.matrix.VeritaRoomDisplayNameFallbackProvider
 import org.matrix.android.sdk.api.Matrix
+import org.matrix.android.sdk.api.MatrixConfiguration
 import org.matrix.android.sdk.api.session.Session
 import javax.inject.Singleton
 
@@ -17,7 +19,11 @@ object MatrixModule {
     @Provides
     @Singleton
     fun provideMatrix(@ApplicationContext context: Context): Matrix {
-        return Matrix.getInstance(context)
+        val configuration = MatrixConfiguration(
+            applicationFlavor = "Verita",
+            roomDisplayNameFallbackProvider = VeritaRoomDisplayNameFallbackProvider()
+        )
+        return Matrix(context, configuration)
     }
 
     @Provides

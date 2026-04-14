@@ -30,9 +30,13 @@ class MainActivity : ComponentActivity() {
 // Temporary placeholder for when code isn't generated yet
 object EmptyDestinationsNavigator : com.ramcosta.composedestinations.navigation.DestinationsNavigator {
     override fun clearBackStack(route: String) = false
+    override fun clearBackStack(route: com.ramcosta.composedestinations.spec.Route) = false
+    override fun navigate(direction: com.ramcosta.composedestinations.spec.Direction, onlyIfResumed: Boolean, builder: androidx.navigation.NavOptionsBuilder.() -> Unit) {}
     override fun navigate(route: String, onlyIfResumed: Boolean, builder: androidx.navigation.NavOptionsBuilder.() -> Unit) {}
+    override fun navigate(direction: com.ramcosta.composedestinations.spec.Direction, onlyIfResumed: Boolean, navOptions: androidx.navigation.NavOptions?, navigatorExtras: androidx.navigation.Navigator.Extras?) {}
+    override fun navigate(route: String, onlyIfResumed: Boolean, navOptions: androidx.navigation.NavOptions?, navigatorExtras: androidx.navigation.Navigator.Extras?) {}
     override fun navigateUp() = false
     override fun popBackStack() = false
     override fun popBackStack(route: String, inclusive: Boolean, saveState: Boolean) = false
-    override fun navigate(route: String, builder: androidx.navigation.NavOptionsBuilder.() -> Unit) {}
+    override fun popBackStack(route: com.ramcosta.composedestinations.spec.Route, inclusive: Boolean, saveState: Boolean) = false
 }

@@ -9,11 +9,5 @@ import org.matrix.android.sdk.api.MatrixConfiguration
 class VeritaApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        
-        val matrixConfiguration = MatrixConfiguration(
-            applicationFlavor = "Verita"
-        )
-        
-        Matrix.initialize(this, matrixConfiguration)
     }
 }

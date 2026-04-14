@@ -27,9 +27,10 @@ class LoginViewModel @Inject constructor(
                     .build()
                 
                 val authService = matrix.authenticationService()
-                authService.cancelPendingLogin()
+                authService.cancelPendingLoginOrRegistration()
                 
-                authService.getLoginWizard().loginWithPassword(username, password, "Verita-Android", hsConfig)
+                authService.getLoginFlow(hsConfig)
+                authService.getLoginWizard().login(username, password, "Verita-Android")
                 
                 _loginState.value = LoginState.Success
             } catch (e: Exception) {
