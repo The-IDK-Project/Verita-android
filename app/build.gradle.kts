@@ -18,6 +18,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        ndk {
+            abiFilters.add("arm64-v8a")
+            abiFilters.add("x86_64")
+        }
     }
 
     buildTypes {
@@ -81,6 +85,10 @@ dependencies {
     // Navigation
     implementation(libs.compose.destinations.core)
     ksp(libs.compose.destinations.ksp)
+
+    // WorkManager & Startup
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.startup)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
