@@ -18,6 +18,7 @@ class VeritaApp : Application(), Configuration.Provider {
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
+            .setWorkerFactory(matrix.getWorkerFactory())
             .setMinimumLoggingLevel(android.util.Log.DEBUG)
             .build()
 }

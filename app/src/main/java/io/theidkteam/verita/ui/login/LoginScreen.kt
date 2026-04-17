@@ -1,10 +1,16 @@
 package io.theidkteam.verita.ui.login
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -22,6 +28,13 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     
     val state by viewModel.loginState.collectAsState()
+    val uriHandler = LocalUriHandler.current
+
+    val popularHomeservers = listOf(
+        "https://matrix.org",
+        "https://mozilla.org",
+        "https://kde.org"
+    )
 
     Column(
         modifier = Modifier
@@ -32,12 +45,32 @@ fun LoginScreen(
     ) {
         Text(text = "Welcome to Verita", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(32.dp))
+
+        Text(
+            text = "Select Homeserver:",
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.align(Alignment.Start).padding(bottom = 8.dp)
+        )
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(popularHomeservers) { server ->
+                FilterChip(
+                    selected = homeserver == server,
+                    onClick = { homeserver = server },
+                    label = { Text(server.replace("https://", "")) }
+                )
+            }
+        }
         
         OutlinedTextField(
             value = homeserver,
             onValueChange = { homeserver = it },
             label = { Text("Homeserver") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = state !is LoginViewModel.LoginState.Loading
         )
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -71,6 +104,30 @@ fun LoginScreen(
             } else {
                 Text("Login")
             }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedButton(
+            onClick = { 
+                val registerUrl = "$homeserver/_matrix/static/client/register/"
+                uriHandler.openUri(registerUrl)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Register")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        TextButton(
+            onClick = {
+                homeserver = "https://matrix.org"
+                username = "test_user_verita"
+                password = "test_password_123"
+            }
+        ) {
+            Text("Debug: Fill Test Account")
         }
         
         if (state is LoginViewModel.LoginState.Error) {
