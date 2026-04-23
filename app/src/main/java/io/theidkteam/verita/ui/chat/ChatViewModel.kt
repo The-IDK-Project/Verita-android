@@ -1,7 +1,7 @@
 package io.theidkteam.verita.ui.chat
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,17 +25,34 @@ class ChatViewModel @Inject constructor(
     val timelineEvents: StateFlow<List<TimelineEvent>> = _timelineEvents
 
     fun initRoom(roomId: String) {
+        if (room?.roomId == roomId) return
+        
+        Log.d("ChatViewModel", "Initializing room: $roomId")
+        timeline?.dispose()
         room = session?.roomService()?.getRoom(roomId)
+        
+        // Create timeline starting from the end of the room
         timeline = room?.timelineService()?.createTimeline(null, TimelineSettings(30))
         timeline?.addListener(object : Timeline.Listener {
             override fun onTimelineUpdated(snapshot: List<TimelineEvent>) {
-                _timelineEvents.value = snapshot
+                Log.d("ChatViewModel", "Timeline updated: ${snapshot.size} events")
+                // Reverse the list so newest messages are at index 0 for reverseLayout
+                _timelineEvents.value = snapshot.reversed()
             }
-            override fun onTimelineFailure(throwable: Throwable) {}
-            override fun onNewTimelineEvents(eventIds: List<String>) {}
-            override fun onStateUpdated(direction: Timeline.Direction, state: Timeline.PaginationState) {}
+            override fun onTimelineFailure(throwable: Throwable) {
+                Log.e("ChatViewModel", "Timeline failed", throwable)
+            }
+            override fun onNewTimelineEvents(eventIds: List<String>) {
+                Log.d("ChatViewModel", "New events received: ${eventIds.size}")
+            }
+            override fun onStateUpdated(direction: Timeline.Direction, state: Timeline.PaginationState) {
+                Log.d("ChatViewModel", "Timeline state updated: $state in direction $direction")
+            }
         })
         timeline?.start()
+        
+        // Initial pagination to fill the screen with messages
+        timeline?.paginate(Timeline.Direction.BACKWARDS, 30)
     }
 
     override fun onCleared() {
@@ -46,4 +63,6 @@ class ChatViewModel @Inject constructor(
     fun sendMessage(text: String) {
         room?.sendService()?.sendTextMessage(text)
     }
+
+    fun getContentUrlResolver() = session?.contentUrlResolver()
 }

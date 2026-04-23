@@ -4,9 +4,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import coil.compose.AsyncImage
+import org.matrix.android.sdk.api.session.room.model.message.MessageStickerContent
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,18 +26,27 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun ChatScreen(
     roomId: String,
+    onBack: () -> Unit,
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     LaunchedEffect(roomId) {
         viewModel.initRoom(roomId)
     }
 
-    val events by viewModel.timelineEvents?.collectAsState(initial = emptyList()) ?: remember { mutableStateOf(emptyList()) }
+    val events by viewModel.timelineEvents.collectAsState()
+    val contentUrlResolver = viewModel.getContentUrlResolver()
     var messageText by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Chat") })
+            TopAppBar(
+                title = { Text("Chat") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
         },
         bottomBar = {
             ChatBottomBar(
@@ -56,7 +68,7 @@ fun ChatScreen(
             reverseLayout = true
         ) {
             items(events) { event ->
-                MessageItem(event)
+                MessageItem(event, contentUrlResolver)
             }
         }
     }
@@ -97,23 +109,44 @@ fun ChatBottomBar(
 }
 
 @Composable
-fun MessageItem(event: TimelineEvent) {
-    val content = event.getLastMessageContent()?.body ?: ""
+fun MessageItem(event: TimelineEvent, contentUrlResolver: org.matrix.android.sdk.api.session.content.ContentUrlResolver?) {
+    val messageContent = event.getLastMessageContent()
+    val isSticker = messageContent is MessageStickerContent
+    
     Column(modifier = Modifier.padding(8.dp)) {
         Text(
             text = event.senderInfo.displayName ?: event.root.senderId ?: "",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary
         )
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Text(
-                text = content,
-                modifier = Modifier.padding(8.dp)
-            )
+        
+        if (isSticker) {
+            val stickerContent = messageContent as MessageStickerContent
+            val resolvedUrl = contentUrlResolver?.resolveFullSize(stickerContent.url)
+            
+            Column {
+                AsyncImage(
+                    model = resolvedUrl ?: stickerContent.url,
+                    contentDescription = stickerContent.body,
+                    modifier = Modifier.size(150.dp).padding(4.dp)
+                )
+                Text(
+                    text = stickerContent.body,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+        } else {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Text(
+                    text = messageContent?.body ?: "",
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
         }
     }
 }

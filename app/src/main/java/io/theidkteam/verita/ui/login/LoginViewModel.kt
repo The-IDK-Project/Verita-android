@@ -30,14 +30,31 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch(handler) {
             _loginState.value = LoginState.Loading
             try {
-                val trimmedHomeserver = homeserverUrl.trim().removeSuffix("/")
-                val sanitizedHomeserver = if (trimmedHomeserver.startsWith("http")) {
-                    trimmedHomeserver
-                } else {
-                    "https://$trimmedHomeserver"
-                }
+                var workingUsername = username.trim()
+                var workingHomeserver = homeserverUrl.trim().removeSuffix("/")
                 
-                val trimmedUsername = username.trim()
+                // Support for full MXID @user:domain.com
+                if (workingUsername.startsWith("@") && workingUsername.contains(":")) {
+                    val parts = workingUsername.substring(1).split(":")
+                    if (parts.size >= 2) {
+                        val localpart = parts[0]
+                        val domain = workingUsername.substringAfterLast(":")
+                        
+                        // Auto-set homeserver if not set or default
+                        if (workingHomeserver.isEmpty() || workingHomeserver.contains("matrix.org")) {
+                            workingHomeserver = "https://$domain"
+                        }
+                        
+                        // Use only localpart for login as most servers expect it when homeserver is already set
+                        workingUsername = localpart
+                    }
+                }
+
+                val sanitizedHomeserver = when {
+                    workingHomeserver.isEmpty() -> "https://matrix.org"
+                    workingHomeserver.startsWith("http") -> workingHomeserver
+                    else -> "https://$workingHomeserver"
+                }
                 
                 val hsConfig = HomeServerConnectionConfig.Builder()
                     .withHomeServerUri(sanitizedHomeserver)
@@ -46,13 +63,16 @@ class LoginViewModel @Inject constructor(
                 val authService = matrix.authenticationService()
                 authService.cancelPendingLoginOrRegistration()
                 
-                // We attempt to use direct authentication first for simple password login
-                // If it's a full MXID, the SDK handles it, otherwise we use the provided username
-                authService.directAuthentication(
-                    hsConfig,
-                    trimmedUsername,
+                // 1. First get login flows (required for Wizard initialization)
+                Log.d("LoginViewModel", "Fetching login flows for $sanitizedHomeserver")
+                authService.getLoginFlow(hsConfig)
+                
+                // 2. Use Wizard for login
+                Log.d("LoginViewModel", "Attempting login for user: $workingUsername")
+                val session = authService.getLoginWizard().login(
+                    workingUsername,
                     password,
-                    "Verita-Android"
+                    "Verita Android (${android.os.Build.MODEL})"
                 )
                 
                 _loginState.value = LoginState.Success
@@ -60,15 +80,23 @@ class LoginViewModel @Inject constructor(
                 Log.e("LoginViewModel", "Login failed", failure)
                 val errorMessage = when (failure) {
                     is Failure.ServerError -> {
-                        if (failure.error.code == "M_FORBIDDEN") {
-                            "Invalid username or password. Please check your credentials."
-                        } else {
-                            "${failure.error.message} (${failure.error.code})"
+                        val serverError = failure.error
+                        when (serverError.code) {
+                            "M_FORBIDDEN" -> {
+                                if (serverError.message.contains("Invalid username/password", ignoreCase = true)) {
+                                    "Invalid username or password. Please make sure the credentials are correct."
+                                } else {
+                                    serverError.message.ifEmpty { "Access denied (M_FORBIDDEN)" }
+                                }
+                            }
+                            "M_USER_DEACTIVATED" -> "This account has been deactivated."
+                            "M_FORBIDDEN_LIMIT_EXCEEDED" -> "Too many attempts. Please try again later."
+                            else -> "${serverError.message} (${serverError.code})"
                         }
                     }
-                    is Failure.NetworkConnection -> "Network error. Please check your internet connection."
+                    is Failure.NetworkConnection -> "Network problem. Please check your internet connection."
                     else -> failure.localizedMessage
-                } ?: "Authentication failed"
+                } ?: "Authentication error"
                 _loginState.value = LoginState.Error(errorMessage)
             }
         }

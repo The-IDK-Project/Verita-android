@@ -33,7 +33,7 @@
         eros nisl, imperdiet vel imperdiet et, scelerisque a mauris. Pellentesque varius ex nunc,
         quis imperdiet eros placerat ac. Duis finibus orci et est auctor tincidunt. Sed non viverra
         ipsum. Nunc quis augue egestas, cursus lorem at, molestie sem. Morbi a consectetur ipsum, a
-        placerat diam. Etiam vulputate dignissim convallis. Integer faucibus mauris sit amet finibus
+        плацерат diam. Etiam vulputate dignissim convallis. Integer faucibus mauris sit amet finibus
         convallis.\n\n
         Phasellus in aliquet mi. Pellentesque habitant morbi tristique senectus et netus et
         malesuada fames ac turpis egestas. In volutpat arcu ut felis sagittis, in finibus massa
@@ -43,4 +43,21 @@
         libero vel nunc consequat, quis tincidunt nisl eleifend. Cras bibendum enim a justo luctus
         vestibulum. Fusce dictum libero quis erat maximus, vitae volutpat diam dignissim.
     </string>
+
+    <string name="login_welcome">Welcome to Verita</string>
+    <string name="login_select_homeserver">Select Homeserver:</string>
+    <string name="login_username">Username</string>
+    <string name="login_password">Password</string>
+    <string name="login_button">Login</string>
+    <string name="login_register">Register</string>
+    <string name="login_fill_test">Debug: Fill Test Account</string>
+    <string name="login_error_invalid_credentials">Invalid username or password. Please make sure your credentials are correct.</string>
+    <string name="login_error_network">Network problem. Please check your internet connection.</string>
+    <string name="login_error_deactivated">This account has been deactivated.</string>
+    <string name="login_error_unknown">Authentication error</string>
+
+    <string name="settings_language">Language</string>
+    <string name="language_english">English</string>
+    <string name="language_russian">Russian</string>
+    <string name="login_skip">Skip (Design)</string>
 </resources>

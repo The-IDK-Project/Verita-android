@@ -1,33 +1,62 @@
 package io.theidkteam.verita.ui.login
 
-import androidx.compose.foundation.clickable
+import android.app.Activity
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import io.theidkteam.verita.R
+import io.theidkteam.verita.data.SettingsManager
 
 @Destination(start = true)
 @Composable
 fun LoginScreen(
-    navigator: DestinationsNavigator,
+    navigator: DestinationsNavigator? = null,
+    onBack: () -> Unit = {},
     viewModel: LoginViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+    val settingsManager = (context.applicationContext as? io.theidkteam.verita.VeritaApp)?.settingsManager
+    val state by viewModel.loginState.collectAsState()
+
+    LoginScreenContent(
+        state = state,
+        onLogin = { hs, user, pass -> viewModel.login(hs, user, pass) },
+        navigator = navigator,
+        onBack = onBack,
+        settingsManager = settingsManager
+    )
+}
+
+@Composable
+fun LoginScreenContent(
+    state: LoginViewModel.LoginState,
+    onLogin: (String, String, String) -> Unit,
+    navigator: DestinationsNavigator?,
+    onBack: () -> Unit = {},
+    settingsManager: SettingsManager? = null
+) {
+    val context = LocalContext.current
     var homeserver by remember { mutableStateOf("https://matrix.org") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     
-    val state by viewModel.loginState.collectAsState()
     val uriHandler = LocalUriHandler.current
 
     val popularHomeservers = listOf(
@@ -39,15 +68,47 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "Welcome to Verita", style = MaterialTheme.typography.headlineMedium)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            var showLanguageMenu by remember { mutableStateOf(false) }
+            IconButton(onClick = { showLanguageMenu = true }) {
+                Icon(Icons.Default.Language, contentDescription = "Language")
+            }
+            DropdownMenu(
+                expanded = showLanguageMenu,
+                onDismissRequest = { showLanguageMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.language_english)) },
+                    onClick = {
+                        settingsManager?.saveLanguage("en")
+                        showLanguageMenu = false
+                        (context as? Activity)?.recreate()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.language_russian)) },
+                    onClick = {
+                        settingsManager?.saveLanguage("ru")
+                        showLanguageMenu = false
+                        (context as? Activity)?.recreate()
+                    }
+                )
+            }
+        }
+
+        Text(text = stringResource(R.string.login_welcome), style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "Select Homeserver:",
+            text = stringResource(R.string.login_select_homeserver),
             style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.align(Alignment.Start).padding(bottom = 8.dp)
         )
@@ -78,7 +139,7 @@ fun LoginScreen(
         OutlinedTextField(
             value = username,
             onValueChange = { username = it },
-            label = { Text("Username") },
+            label = { Text(stringResource(R.string.login_username)) },
             modifier = Modifier.fillMaxWidth()
         )
         
@@ -87,7 +148,7 @@ fun LoginScreen(
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Password") },
+            label = { Text(stringResource(R.string.login_password)) },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
         )
@@ -95,14 +156,14 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(24.dp))
         
         Button(
-            onClick = { viewModel.login(homeserver, username, password) },
+            onClick = { onLogin(homeserver, username, password) },
             modifier = Modifier.fillMaxWidth(),
             enabled = state !is LoginViewModel.LoginState.Loading
         ) {
             if (state is LoginViewModel.LoginState.Loading) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
             } else {
-                Text("Login")
+                Text(stringResource(R.string.login_button))
             }
         }
 
@@ -115,7 +176,7 @@ fun LoginScreen(
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Register")
+            Text(stringResource(R.string.login_register))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -127,7 +188,19 @@ fun LoginScreen(
                 password = "test_password_123"
             }
         ) {
-            Text("Debug: Fill Test Account")
+            Text(stringResource(R.string.login_fill_test))
+        }
+
+        TextButton(
+            onClick = {
+                if (navigator != null) {
+                    navigator.navigate("room_list_screen")
+                } else {
+                    onBack()
+                }
+            }
+        ) {
+            Text(stringResource(R.string.login_skip))
         }
         
         if (state is LoginViewModel.LoginState.Error) {
@@ -140,8 +213,25 @@ fun LoginScreen(
         
         LaunchedEffect(state) {
             if (state is LoginViewModel.LoginState.Success) {
-                // navigator.navigate(RoomListScreenDestination)
+                if (navigator != null) {
+                    navigator.navigate("room_list_screen")
+                } else {
+                    onBack()
+                }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LoginScreenPreview() {
+    MaterialTheme {
+        LoginScreenContent(
+            state = LoginViewModel.LoginState.Idle,
+            onLogin = { _, _, _ -> },
+            navigator = null,
+            onBack = {}
+        )
     }
 }

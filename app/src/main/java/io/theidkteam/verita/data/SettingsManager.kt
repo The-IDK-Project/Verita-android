@@ -25,6 +25,12 @@ class SettingsManager @Inject constructor(
     var primaryB by mutableStateOf(prefs.getInt("primary_b", 238))
 
     var fontFamily by mutableStateOf(prefs.getString("font_family", "Default") ?: "Default")
+    var language by mutableStateOf(prefs.getString("language", "en") ?: "en")
+
+    fun saveLanguage(langCode: String) {
+        language = langCode
+        prefs.edit().putString("language", langCode).apply()
+    }
 
     fun saveProxy(host: String, port: Int, enabled: Boolean) {
         proxyHost = host
