@@ -16,7 +16,7 @@ A modern Matrix client for Android built with Jetpack Compose and Matrix Android
 - **Room List**: Real-time room summaries with last message previews and fallback demo data.
 - **Chat**: 
     - Real-time messaging using Timeline API.
-    - Support for text messages and stickers (WebP).
+    - Support for text messages.
     - Reverse layout for natural chat flow.
 - **Settings**: 
     - Proxy server configuration.

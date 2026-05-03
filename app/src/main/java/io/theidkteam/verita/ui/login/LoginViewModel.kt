@@ -61,21 +61,34 @@ class LoginViewModel @Inject constructor(
                     .build()
                 
                 val authService = matrix.authenticationService()
+                
+                // 1. Important: Ensure we are starting fresh
                 authService.cancelPendingLoginOrRegistration()
                 
-                // 1. First get login flows (required for Wizard initialization)
-                Log.d("LoginViewModel", "Fetching login flows for $sanitizedHomeserver")
-                authService.getLoginFlow(hsConfig)
+                // 2. We must get flows first to populate the Wizard
+                try {
+                    authService.getLoginFlow(hsConfig)
+                } catch (e: Exception) {
+                    Log.w("LoginViewModel", "Could not fetch flows, trying direct login anyway", e)
+                }
                 
-                // 2. Use Wizard for login
-                Log.d("LoginViewModel", "Attempting login for user: $workingUsername")
-                val session = authService.getLoginWizard().login(
-                    workingUsername,
-                    password,
-                    "Verita Android (${android.os.Build.MODEL})"
-                )
-                
-                _loginState.value = LoginState.Success
+                // 3. Attempt direct password login via wizard
+                Log.d("LoginViewModel", "Attempting login for user: $workingUsername on $sanitizedHomeserver")
+                val wizard = authService.getLoginWizard()
+                try {
+                    val session = wizard.login(
+                        workingUsername,
+                        password,
+                        "Verita Android Alpha (${android.os.Build.MODEL})"
+                    )
+                    Log.d("LoginViewModel", "Login successful, user id: ${session.myUserId}")
+                    _loginState.value = LoginState.Success
+                } catch (e: Exception) {
+                    Log.e("LoginViewModel", "Wizard login failed", e)
+                    // Try legacy login as fallback
+                    val session = authService.directAuthentication(hsConfig, workingUsername, password, "Verita Legacy Login")
+                    _loginState.value = LoginState.Success
+                }
             } catch (failure: Throwable) {
                 Log.e("LoginViewModel", "Login failed", failure)
                 val errorMessage = when (failure) {
@@ -94,7 +107,7 @@ class LoginViewModel @Inject constructor(
                             else -> "${serverError.message} (${serverError.code})"
                         }
                     }
-                    is Failure.NetworkConnection -> "Network problem. Please check your internet connection."
+                    is Failure.NetworkConnection -> "Network problem. Please check your internet connection or use VPN."
                     else -> failure.localizedMessage
                 } ?: "Authentication error"
                 _loginState.value = LoginState.Error(errorMessage)

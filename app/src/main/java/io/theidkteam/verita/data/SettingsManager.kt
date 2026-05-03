@@ -26,6 +26,7 @@ class SettingsManager @Inject constructor(
 
     var fontFamily by mutableStateOf(prefs.getString("font_family", "Default") ?: "Default")
     var language by mutableStateOf(prefs.getString("language", "en") ?: "en")
+    var chatBackgroundUri by mutableStateOf(prefs.getString("chat_background_uri", "") ?: "")
 
     fun saveLanguage(langCode: String) {
         language = langCode
@@ -52,6 +53,11 @@ class SettingsManager @Inject constructor(
             .putInt("primary_g", g)
             .putInt("primary_b", b)
             .apply()
+    }
+
+    fun saveChatBackground(uri: String) {
+        chatBackgroundUri = uri
+        prefs.edit().putString("chat_background_uri", uri).apply()
     }
 
     fun getProxy(): Proxy? {
