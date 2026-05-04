@@ -1,7 +1,6 @@
 # Verita
 
 A modern Matrix client for Android built with Jetpack Compose and Matrix Android SDK 2.
-
 ## Tech Stack
 - **Language**: Kotlin
 - **UI**: Jetpack Compose (Material 3)
@@ -12,7 +11,12 @@ A modern Matrix client for Android built with Jetpack Compose and Matrix Android
 - **Localization**: Multi-language support (EN/RU) via custom `SettingsManager`
 
 ## Core Features
-- **Authentication**: Login via username/password with support for custom homeservers.
+- **Authentication**: 
+    - Login via username/password with support for custom homeservers.
+    - **Telegram Integration**: Support for logging in via Matrix-Telegram bridge using:
+        - Phone number + SMS/2FA.
+        - Email-based authentication.
+        - Official Telegram Web Widget (WebView intercept).
 - **Room List**: Real-time room summaries with last message previews and fallback demo data.
 - **Chat**: 
     - Real-time messaging using Timeline API.

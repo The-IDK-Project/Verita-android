@@ -77,20 +77,30 @@ fun LoginScreenContent(
     
     var showTelegramLogin by remember { mutableStateOf(false) }
     var showTelegramWebLogin by remember { mutableStateOf(false) }
+    var showDiscordWebLogin by remember { mutableStateOf(false) }
     
     val uriHandler = LocalUriHandler.current
 
-    if (showTelegramWebLogin) {
-        TelegramWebViewLogin(
-            loginUrl = null, // Передайте сюда URL, если у вас есть внешняя страница логина
+    if (showDiscordWebLogin) {
+        SocialWebViewLogin(
+            title = "Discord Login",
+            loginUrl = "https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=tgauth://success&response_type=token&scope=identify",
+            onDismiss = { showDiscordWebLogin = false },
+            onAuthDataReceived = { data ->
+                showDiscordWebLogin = false
+                val token = data["access_token"]
+                onLogin("https://matrix.org", "@discord_user:matrix.org", "token:$token")
+            }
+        )
+    } else if (showTelegramWebLogin) {
+        SocialWebViewLogin(
+            title = "Telegram Login",
             onDismiss = { showTelegramWebLogin = false },
             onAuthDataReceived = { data: Map<String, String> ->
                 showTelegramWebLogin = false
                 if (data.containsKey("access_token")) {
-                    // Если перехвачен токен доступа
                     onLogin("https://matrix.org", "@tg_user:matrix.org", "token:${data["access_token"]}")
                 } else {
-                    // Стандартные данные виджета (id, hash)
                     onLogin("https://matrix.org", "@tg_${data["id"]}:matrix.org", "tg_web_${data["hash"]}")
                 }
             }
@@ -112,8 +122,8 @@ fun LoginScreenContent(
     } else {
         val popularHomeservers = listOf(
             "https://matrix.org",
-            "https://mozilla.org",
-            "https://kde.org"
+            "https://matrix.unredacted.org",
+            "https://tchncs.de"
         )
 
         Column(
@@ -222,7 +232,12 @@ fun LoginScreenContent(
 
             OutlinedButton(
                 onClick = { 
-                    val registerUrl = "$homeserver/_matrix/static/client/register/"
+                    val registerUrl = when {
+                        homeserver.contains("matrix.org") -> "https://account.matrix.org/register"
+                        homeserver.contains("tchncs.de") -> "https://chat.tchncs.de/#/register"
+                        homeserver.contains("unredacted.org") -> "https://cinny.unredacted.org/register/https%3A%2F%2Fmatrix.unredacted.org"
+                        else -> "$homeserver/_matrix/static/client/register/"
+                    }
                     uriHandler.openUri(registerUrl)
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -247,6 +262,27 @@ fun LoginScreenContent(
                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text("LOGIN WITH TELEGRAM", fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { showDiscordWebLogin = true },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF5865F2))
+                ) {
+                    Text("DISCORD", fontWeight = FontWeight.Bold)
+                }
+                OutlinedButton(
+                    onClick = { /* TODO: Other social login */ },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("MORE...", fontWeight = FontWeight.Bold)
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -435,7 +471,7 @@ fun TelegramLoginUI(
                         keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
                     )
                 )
-                
+                // Блять у меня AIMP вылетел :(
                 Spacer(modifier = Modifier.height(32.dp))
                 
                 Button(
@@ -589,7 +625,8 @@ fun TelegramLoginUI(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TelegramWebViewLogin(
+fun SocialWebViewLogin(
+    title: String,
     loginUrl: String? = null,
     onDismiss: () -> Unit,
     onAuthDataReceived: (Map<String, String>) -> Unit
@@ -597,7 +634,7 @@ fun TelegramWebViewLogin(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Telegram Login") },
+                title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -614,6 +651,7 @@ fun TelegramWebViewLogin(
                 WebView(context).apply {
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
+                    settings.userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
                     webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(
                             view: WebView?,
@@ -621,15 +659,13 @@ fun TelegramWebViewLogin(
                         ): Boolean {
                             val url = request?.url?.toString() ?: ""
                             
-                            // 1. Перехват токена (из fragment # или query ?)
                             if (url.contains("access_token=")) {
                                 val token = url.substringAfter("access_token=").substringBefore("&")
                                 onAuthDataReceived(mapOf("access_token" to token))
                                 return true
                             }
 
-                            // 2. Перехват через специальную схему
-                            if (url.startsWith("tgauth://")) {
+                            if (url.startsWith("tgauth://") || url.startsWith("verita://")) {
                                 val params = request?.url?.queryParameterNames?.associateWith {
                                     request.url.getQueryParameter(it) ?: ""
                                 } ?: emptyMap()
@@ -643,7 +679,6 @@ fun TelegramWebViewLogin(
                     if (loginUrl != null) {
                         loadUrl(loginUrl)
                     } else {
-                        // Загружаем виджет по умолчанию
                         val html = """
                             <!DOCTYPE html>
                             <html>
