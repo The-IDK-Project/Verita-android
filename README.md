@@ -1,6 +1,10 @@
-# Verita
+                            Verita
 
 A modern Matrix client for Android built with Jetpack Compose and Matrix Android SDK 2.
+
+                            Screenshots
+<img width="576" height="1280" alt="photo_2026-05-03_22-59-46" src="https://github.com/user-attachments/assets/4f118c98-4d2a-415a-af78-785299f9524d" /> <img width="576" height="1280" alt="photo_2026-05-03_22-59-48" src="https://github.com/user-attachments/assets/0144ceb0-47ae-43dc-b489-2ca299c92fa0" /> <img width="576" height="1280" alt="photo_2026-05-03_22-59-50" src="https://github.com/user-attachments/assets/e60d7786-78bd-4266-823a-de6265905cf0" /> <img width="576" height="1280" alt="photo_2026-05-03_22-59-53" src="https://github.com/user-attachments/assets/e6a32177-8b99-4605-ab3f-21ef5aec2b08" />
+
 
 ## Tech Stack
 - **Language**: Kotlin
