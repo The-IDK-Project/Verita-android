@@ -42,6 +42,10 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import io.theidkteam.verita.R
 import io.theidkteam.verita.data.SettingsManager
 
+// Configuration for Social Logins
+const val TELEGRAM_BOT_NAME = "VeritaBot" // Replace with your bot username from @BotFather
+const val DISCORD_CLIENT_ID = "YOUR_CLIENT_ID"
+
 @Destination(start = true)
 @Composable
 fun LoginScreen(
@@ -251,7 +255,7 @@ fun LoginScreenContent(
 
             Button(
                 onClick = {
-                    showTelegramLogin = true
+                    showTelegramWebLogin = true
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
@@ -270,6 +274,8 @@ fun LoginScreenContent(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // Discord is hidden for now as requested
+                /*
                 OutlinedButton(
                     onClick = { showDiscordWebLogin = true },
                     modifier = Modifier.weight(1f),
@@ -277,11 +283,12 @@ fun LoginScreenContent(
                 ) {
                     Text("DISCORD", fontWeight = FontWeight.Bold)
                 }
+                */
                 OutlinedButton(
-                    onClick = { /* TODO: Other social login */ },
+                    onClick = { showTelegramLogin = true },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("MORE...", fontWeight = FontWeight.Bold)
+                    Text("MANUAL TG", fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -471,7 +478,7 @@ fun TelegramLoginUI(
                         keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
                     )
                 )
-                // Блять у меня AIMP вылетел :(
+                // AIMP crashed again :(
                 Spacer(modifier = Modifier.height(32.dp))
                 
                 Button(
@@ -690,7 +697,7 @@ fun SocialWebViewLogin(
                             </head>
                             <body>
                                 <script async src="https://telegram.org/js/telegram-widget.js?22" 
-                                    data-telegram-login="VeritaBot" 
+                                    data-telegram-login="$TELEGRAM_BOT_NAME"
                                     data-size="large" 
                                     data-onauth="onTelegramAuth(user)" 
                                     data-request-access="write"></script>

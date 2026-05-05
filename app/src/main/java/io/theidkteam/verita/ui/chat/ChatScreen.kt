@@ -3,30 +3,33 @@ package io.theidkteam.verita.ui.chat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import coil.compose.AsyncImage
-import coil.compose.rememberAsyncImagePainter
-import org.matrix.android.sdk.api.session.room.model.message.MessageStickerContent
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
 import com.ramcosta.composedestinations.annotation.Destination
 import io.theidkteam.verita.VeritaApp
+import org.matrix.android.sdk.api.session.room.model.message.MessageStickerContent
 import org.matrix.android.sdk.api.session.room.timeline.TimelineEvent
 import org.matrix.android.sdk.api.session.room.timeline.getLastMessageContent
-import androidx.compose.material3.ExperimentalMaterial3Api
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination
@@ -59,6 +62,14 @@ fun ChatScreen(
     }
 
     Scaffold(
+        modifier = Modifier.pointerInput(Unit) {
+            detectHorizontalDragGestures { _, dragAmount ->
+                // "Swipe left" (moving finger from right to left)
+                if (dragAmount < -50) {
+                    onBack()
+                }
+            }
+        },
         topBar = {
             Column {
                 TopAppBar(
@@ -139,25 +150,37 @@ fun ChatScreen(
                 reverseLayout = true
             ) {
                 if (events.isEmpty() && testMessages.isEmpty()) {
-                    item {
-                        TestMessageItem(sender = "Alice", body = "Hello! This is a test message.")
+                    item(key = "alice1") {
+                        TestMessageItem(sender = "Alice", body = "Hello! This is a test message.", modifier = Modifier.animateItem())
                     }
-                    item {
-                        TestMessageItem(sender = "Bob", body = "Hi Alice! I see the test messages.")
+                    item(key = "bob1") {
+                        TestMessageItem(sender = "Bob", body = "Hi Alice! I see the test messages.", modifier = Modifier.animateItem())
                     }
-                    item {
-                        TestMessageItem(sender = "Alice", body = "Great, the UI is working!")
+                    item(key = "alice2") {
+                        TestMessageItem(sender = "Alice", body = "Great, the UI is working!", modifier = Modifier.animateItem())
                     }
                 } else {
-                    items(testMessages.reversed()) { msg ->
+                    items(
+                        items = testMessages.reversed(),
+                        key = { it.id }
+                    ) { msg ->
                         TestMessageItem(
                             sender = msg.sender,
                             body = msg.body,
-                            isMe = msg.sender == "Me" || msg.sender == myUserId
+                            isMe = msg.sender == "Me" || msg.sender == myUserId,
+                            modifier = Modifier.animateItem()
                         )
                     }
-                    items(events) { event ->
-                        MessageItem(event, contentUrlResolver, isMe = event.root.senderId == myUserId)
+                    items(
+                        items = events,
+                        key = { it.localId }
+                    ) { event ->
+                        MessageItem(
+                            event = event,
+                            contentUrlResolver = contentUrlResolver,
+                            isMe = event.root.senderId == myUserId,
+                            modifier = Modifier.animateItem()
+                        )
                     }
                 }
             }
@@ -166,9 +189,9 @@ fun ChatScreen(
 }
 
 @Composable
-fun TestMessageItem(sender: String, body: String, isMe: Boolean = false) {
+fun TestMessageItem(sender: String, body: String, isMe: Boolean = false, modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(8.dp),
         horizontalAlignment = if (isMe) Alignment.End else Alignment.Start
@@ -217,7 +240,10 @@ fun ChatBottomBar(
                 value = text,
                 onValueChange = onTextChange,
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("Message") }
+                placeholder = { Text("Message") },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences
+                )
             )
             IconButton(onClick = onSendText, enabled = text.isNotBlank()) {
                 Icon(Icons.Default.Send, contentDescription = "Send")
@@ -230,13 +256,13 @@ fun ChatBottomBar(
 fun MessageItem(
     event: TimelineEvent,
     contentUrlResolver: org.matrix.android.sdk.api.session.content.ContentUrlResolver?,
-    isMe: Boolean
+    isMe: Boolean,
+    modifier: Modifier = Modifier
 ) {
     val messageContent = event.getLastMessageContent()
     val isSticker = messageContent is MessageStickerContent
 
     // Filter for Telegram "Premium" or unwanted content if identified
-    // Note: In a real app, you'd check custom event types or specific body patterns
     val body = messageContent?.body ?: ""
     val isUnwantedTelegramContent = body.contains("pinned a message", ignoreCase = true) || 
                                    body.contains("joined the group", ignoreCase = true) ||
@@ -246,7 +272,7 @@ fun MessageItem(
     if (isUnwantedTelegramContent && !isMe) return
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(8.dp),
         horizontalAlignment = if (isMe) Alignment.End else Alignment.Start

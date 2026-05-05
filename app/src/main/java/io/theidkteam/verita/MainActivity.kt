@@ -7,6 +7,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import dagger.hilt.android.AndroidEntryPoint
@@ -47,28 +49,42 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    when (currentScreen) {
-                        "room_list" -> RoomListScreen(
-                            onNavigateToSettings = { currentScreen = "settings" },
-                            onNavigateToLogin = { currentScreen = "login" },
-                            onNavigateToChat = { roomId ->
-                                currentRoomId = roomId
-                                currentScreen = "chat"
+                    AnimatedContent(
+                        targetState = currentScreen,
+                        transitionSpec = {
+                            if (targetState == "chat" || (targetState == "settings" && initialState == "room_list")) {
+                                slideInHorizontally(animationSpec = tween(300)) { it } + fadeIn(animationSpec = tween(300)) togetherWith
+                                        slideOutHorizontally(animationSpec = tween(300)) { -it / 3 } + fadeOut(animationSpec = tween(300))
+                            } else {
+                                slideInHorizontally(animationSpec = tween(300)) { -it / 3 } + fadeIn(animationSpec = tween(300)) togetherWith
+                                        slideOutHorizontally(animationSpec = tween(300)) { it } + fadeOut(animationSpec = tween(300))
                             }
-                        )
-                        "chat" -> currentRoomId?.let { roomId ->
-                            ChatScreen(
-                                roomId = roomId,
+                        },
+                        label = "ScreenTransition"
+                    ) { targetScreen ->
+                        when (targetScreen) {
+                            "room_list" -> RoomListScreen(
+                                onNavigateToSettings = { currentScreen = "settings" },
+                                onNavigateToLogin = { currentScreen = "login" },
+                                onNavigateToChat = { roomId ->
+                                    currentRoomId = roomId
+                                    currentScreen = "chat"
+                                }
+                            )
+                            "chat" -> currentRoomId?.let { roomId ->
+                                ChatScreen(
+                                    roomId = roomId,
+                                    onBack = { currentScreen = "room_list" }
+                                )
+                            }
+                            "login" -> LoginScreen(
+                                onBack = { currentScreen = "room_list" }
+                            )
+                            "settings" -> SettingsScreen(
+                                settingsManager = settingsManager,
                                 onBack = { currentScreen = "room_list" }
                             )
                         }
-                        "login" -> LoginScreen(
-                            onBack = { currentScreen = "room_list" }
-                        )
-                        "settings" -> SettingsScreen(
-                            settingsManager = settingsManager,
-                            onBack = { currentScreen = "room_list" }
-                        )
                     }
                 }
             }

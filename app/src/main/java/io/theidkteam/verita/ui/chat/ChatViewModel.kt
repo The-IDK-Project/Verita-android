@@ -53,7 +53,7 @@ class ChatViewModel @Inject constructor(
         if (room == null) {
             val roomName = if (roomId == "1") "Android Devs" else "Verita Support"
             _testMessages.value = _testMessagesMap[roomId] ?: listOf(
-                TestMessage(System.currentTimeMillis().toString(), "Bot", "Добро пожаловать в чат $roomName! Это отдельная тестовая ветка.")
+                TestMessage(System.currentTimeMillis().toString(), "Bot", "Welcome to the $roomName chat! This is a separate test branch.")
             )
         } else {
             _testMessages.value = emptyList()
@@ -82,7 +82,8 @@ class ChatViewModel @Inject constructor(
     fun sendMessage(text: String) {
         if (text.isBlank()) return
         
-        // Capitalize the first letter
+        // Capitalize sentences/first letter as requested by user.
+        // Assuming capitalization of sentences/first letter since that's standard for chat.
         val capitalizedText = text.trim().replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
         
         val currentRoom = room
@@ -97,11 +98,11 @@ class ChatViewModel @Inject constructor(
             viewModelScope.launch {
                 delay(1000)
                 val replyBody = when {
-                    capitalizedText.contains("привет", ignoreCase = true) || capitalizedText.contains("hello", ignoreCase = true) -> 
-                        "Привет! Я тестовый бот Verita. Твой логин пока в демо-режиме."
-                    capitalizedText.contains("как дела", ignoreCase = true) || capitalizedText.contains("how are you", ignoreCase = true) -> 
-                        "У меня отлично, я всего лишь набор строк кода, но я работаю!"
-                    else -> "Сообщение получено: \"$capitalizedText\". Чтобы отправлять реальные сообщения, войди в аккаунт Matrix."
+                    capitalizedText.contains("hello", ignoreCase = true) || capitalizedText.contains("hi", ignoreCase = true) -> 
+                        "Hello! I'm Verita test bot. Your login is currently in demo mode."
+                    capitalizedText.contains("how are you", ignoreCase = true) || capitalizedText.contains("hows it going", ignoreCase = true) ->
+                        "I'm doing great, I'm just a set of code lines, but I work!"
+                    else -> "Message received: \"$capitalizedText\". To send real messages, log in to a Matrix account."
                 }
                 val botMsg = TestMessage((System.currentTimeMillis() + 1).toString(), "Bot", replyBody)
                 _testMessages.value = _testMessages.value + botMsg
