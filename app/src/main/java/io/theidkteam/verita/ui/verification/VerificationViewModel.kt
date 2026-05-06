@@ -15,6 +15,7 @@ import org.matrix.android.sdk.api.session.crypto.verification.SasVerificationTra
 import org.matrix.android.sdk.api.session.crypto.verification.VerificationEvent
 import org.matrix.android.sdk.api.session.crypto.verification.VerificationService
 import org.matrix.android.sdk.api.session.crypto.verification.VerificationTransaction
+import org.matrix.android.sdk.api.session.crypto.verification.VerificationMethod
 import javax.inject.Inject
 
 @HiltViewModel
@@ -58,13 +59,21 @@ class VerificationViewModel @Inject constructor(
 
     fun approveEmoji() {
         viewModelScope.launch {
-            // Logic to approve emoji match
+            (currentTransaction as? SasVerificationTransaction)?.userHasVerifiedShortCode()
         }
     }
 
     fun declineEmoji() {
         viewModelScope.launch {
             currentTransaction?.cancel()
+        }
+    }
+
+    fun startDeviceVerification() {
+        viewModelScope.launch {
+            session?.cryptoService()?.verificationService()?.requestSelfKeyVerification(
+                listOf(VerificationMethod.SAS)
+            )
         }
     }
 

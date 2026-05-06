@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.matrix.android.sdk.api.session.Session
 import org.matrix.android.sdk.api.session.room.Room
+import org.matrix.android.sdk.api.session.room.model.RoomSummary
 import org.matrix.android.sdk.api.session.room.timeline.Timeline
 import org.matrix.android.sdk.api.session.room.timeline.TimelineEvent
 import org.matrix.android.sdk.api.session.room.timeline.TimelineSettings
@@ -25,6 +26,9 @@ class ChatViewModel @Inject constructor(
 
     private val _timelineEvents = MutableStateFlow<List<TimelineEvent>>(emptyList())
     val timelineEvents: StateFlow<List<TimelineEvent>> = _timelineEvents
+
+    private val _roomSummary = MutableStateFlow<RoomSummary?>(null)
+    val roomSummary: StateFlow<RoomSummary?> = _roomSummary
 
     data class TestMessage(val id: String, val sender: String, val body: String)
 
@@ -48,6 +52,7 @@ class ChatViewModel @Inject constructor(
         Log.d("ChatViewModel", "Initializing room: $roomId")
         timeline?.dispose()
         room = session?.roomService()?.getRoom(roomId)
+        _roomSummary.value = room?.roomSummary()
         
         // Load or initialize test messages for this room
         if (room == null) {

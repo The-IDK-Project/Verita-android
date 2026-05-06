@@ -32,6 +32,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import io.theidkteam.verita.deltachat.DeltaChatRoom
 import androidx.compose.material.icons.filled.Email
+import io.theidkteam.verita.utils.resolveMatrixUrl
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination
@@ -45,6 +48,7 @@ fun RoomListScreen(
     val rooms by viewModel.rooms.collectAsState(initial = emptyList())
     val deltaRooms by viewModel.deltaRooms.collectAsState(initial = emptyList())
     val syncState by viewModel.syncState.collectAsState()
+    val contentUrlResolver = viewModel.getContentUrlResolver()
     
     var selectedFolder by remember { mutableStateOf("All") }
     val folders = listOf("All", "Personal", "Delta Chat (Beta)", "Groups", "Channels", "Bots")
@@ -72,9 +76,9 @@ fun RoomListScreen(
     
     // Demo data for design purposes if no real rooms
     val demoRooms = listOf(
-        DemoRoom("1", "Android Devs", "Hello world! 🔥 5", "12:45", isDirect = false),
-        DemoRoom("2", "Verita Support", "How can I help you? 👍 2", "11:20", isDirect = true),
-        DemoRoom("3", "Telegram Bot", "How to use bridge? 🤖", "10:05", isDirect = true)
+        DemoRoom("1", "Android Devs", "Hello world!", "12:45", isDirect = false),
+        DemoRoom("2", "Verita Support", "How can I help you?", "11:20", isDirect = true),
+        DemoRoom("3", "Telegram Bot", "How to use bridge?", "10:05", isDirect = true)
     )
 
     val filteredDemoRooms = remember(selectedFolder) {
@@ -193,7 +197,11 @@ fun RoomListScreen(
                     DeltaChatRoomItem(room = room, onClick = { /* Future */ })
                 }
                 items(filteredRooms) { room ->
-                    RealRoomItem(room = room, onClick = { onNavigateToChat(room.roomId) })
+                    RealRoomItem(
+                        room = room,
+                        contentUrlResolver = contentUrlResolver,
+                        onClick = { onNavigateToChat(room.roomId) }
+                    )
                 }
             }
         }
@@ -258,7 +266,13 @@ fun DeltaChatRoomItem(room: DeltaChatRoom, onClick: () -> Unit) {
 }
 
 @Composable
-fun RealRoomItem(room: RoomSummary, onClick: () -> Unit) {
+fun RealRoomItem(
+    room: RoomSummary,
+    contentUrlResolver: org.matrix.android.sdk.api.session.content.ContentUrlResolver?,
+    onClick: () -> Unit
+) {
+    val avatarUrl = room.avatarUrl.resolveMatrixUrl(contentUrlResolver)
+
     ListItem(
         headlineContent = { 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -268,14 +282,25 @@ fun RealRoomItem(room: RoomSummary, onClick: () -> Unit) {
         },
         supportingContent = { Text(room.latestPreviewableEvent?.getLastMessageContent()?.body ?: "No messages", maxLines = 1, fontSize = 14.sp) },
         leadingContent = {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(room.displayName.take(1), color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+            if (avatarUrl != null) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(room.displayName.take(1), color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+                }
             }
         },
         modifier = Modifier.clickable { onClick() }

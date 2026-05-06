@@ -10,7 +10,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,7 +31,8 @@ import io.theidkteam.verita.data.SettingsManager
 @Composable
 fun SettingsScreen(
     settingsManager: SettingsManager,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNavigateToVerification: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -120,6 +124,36 @@ fun SettingsScreen(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                 
+                SettingsSectionTitle("Security & Privacy")
+
+                var showRecoveryDialog by remember { mutableStateOf(false) }
+
+                SettingsPreferenceItem(
+                    title = "Recovery Key",
+                    subtitle = "Enter key to decrypt old messages",
+                    icon = Icons.Default.VpnKey,
+                    onClick = { showRecoveryDialog = true }
+                )
+
+                if (showRecoveryDialog) {
+                    RecoveryKeyDialog(
+                        onDismiss = { showRecoveryDialog = false },
+                        onConfirm = { key ->
+                            // TODO: Handle key verification with session.cryptoService()
+                            showRecoveryDialog = false
+                        }
+                    )
+                }
+
+                SettingsPreferenceItem(
+                    title = "Verify this device",
+                    subtitle = "Confirm this session with another device",
+                    icon = Icons.Default.Security,
+                    onClick = onNavigateToVerification
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                
                 SettingsSectionTitle("Connectivity")
                 
                 SettingsSwitchItem(
@@ -193,6 +227,47 @@ fun ColorSlider(label: String, value: Int, onValueChange: (Int) -> Unit) {
             modifier = Modifier.weight(1f)
         )
     }
+}
+
+@Composable
+fun RecoveryKeyDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var key by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Enter Recovery Key") },
+        text = {
+            Column {
+                Text(
+                    "This key is used to decrypt your message history. You can find it in your other Matrix clients.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                OutlinedTextField(
+                    value = key,
+                    onValueChange = { key = it },
+                    label = { Text("Recovery Key") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(key) },
+                enabled = key.isNotBlank()
+            ) {
+                Text("Confirm")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable

@@ -3,11 +3,13 @@ package io.theidkteam.verita.ui.chat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -15,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -23,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import io.theidkteam.verita.utils.resolveMatrixUrl
+import io.theidkteam.verita.utils.resolveFullMatrixUrl
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import com.ramcosta.composedestinations.annotation.Destination
@@ -37,6 +42,7 @@ import org.matrix.android.sdk.api.session.room.timeline.getLastMessageContent
 fun ChatScreen(
     roomId: String,
     onBack: () -> Unit,
+    onNavigateToVerification: () -> Unit,
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     LaunchedEffect(roomId) {
@@ -44,6 +50,7 @@ fun ChatScreen(
     }
 
     val events by viewModel.timelineEvents.collectAsState()
+    val roomSummary by viewModel.roomSummary.collectAsState()
     val testMessages by viewModel.testMessages.collectAsState()
     val myUserId = viewModel.myUserId
     val contentUrlResolver = viewModel.getContentUrlResolver()
@@ -71,9 +78,26 @@ fun ChatScreen(
             }
         },
         topBar = {
+            val roomAvatarUrl = roomSummary?.avatarUrl.resolveMatrixUrl(contentUrlResolver)
+
             Column {
                 TopAppBar(
-                    title = { Text("Chat") },
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (roomAvatarUrl != null) {
+                                AsyncImage(
+                                    model = roomAvatarUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text(roomSummary?.displayName ?: "Chat")
+                        }
+                    },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -107,7 +131,7 @@ fun ChatScreen(
                                 modifier = Modifier.weight(1f)
                             )
                             Button(
-                                onClick = { /* TODO: Start Verification */ },
+                                onClick = onNavigateToVerification,
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                             ) {
                                 Text("Verify", style = MaterialTheme.typography.labelSmall)
@@ -271,51 +295,113 @@ fun MessageItem(
 
     if (isUnwantedTelegramContent && !isMe) return
 
-    Column(
+    val senderAvatarUrl = event.senderInfo.avatarUrl.resolveMatrixUrl(contentUrlResolver, 128, 128)
+
+    Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(8.dp),
-        horizontalAlignment = if (isMe) Alignment.End else Alignment.Start
+        horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start
     ) {
-        Text(
-            text = event.senderInfo.displayName ?: event.root.senderId ?: "",
-            style = MaterialTheme.typography.labelSmall,
-            color = if (isMe) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
-        )
-
-        if (isSticker) {
-            val stickerContent = messageContent as MessageStickerContent
-            val resolvedUrl = contentUrlResolver?.resolveFullSize(stickerContent.url)
-
-            Column(horizontalAlignment = if (isMe) Alignment.End else Alignment.Start) {
+        if (!isMe) {
+            if (senderAvatarUrl != null) {
                 AsyncImage(
-                    model = resolvedUrl ?: stickerContent.url,
-                    contentDescription = stickerContent.body,
+                    model = senderAvatarUrl,
+                    contentDescription = null,
                     modifier = Modifier
-                        .size(150.dp)
-                        .padding(4.dp)
+                        .size(32.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
                 )
-                Text(
-                    text = stickerContent.body,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = (event.senderInfo.displayName ?: event.root.senderId ?: "?").take(1),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
             }
-        } else {
-            val displayBody = messageContent?.body
-                ?: if (event.root.isEncrypted()) "[Encrypted - Verify Device to read]"
-                else "[Unsupported event: ${event.root.getClearType()}]"
+            Spacer(Modifier.width(8.dp))
+        }
 
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isMe) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                ),
-                modifier = Modifier.padding(top = 4.dp)
-            ) {
-                Text(
-                    text = displayBody,
-                    modifier = Modifier.padding(8.dp)
+        Column(
+            horizontalAlignment = if (isMe) Alignment.End else Alignment.Start
+        ) {
+            Text(
+                text = event.senderInfo.displayName ?: event.root.senderId ?: "",
+                style = MaterialTheme.typography.labelSmall,
+                color = if (isMe) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+            )
+
+            if (isSticker) {
+                val stickerContent = messageContent as MessageStickerContent
+                val resolvedUrl = stickerContent.url.resolveFullMatrixUrl(contentUrlResolver)
+
+                Column(horizontalAlignment = if (isMe) Alignment.End else Alignment.Start) {
+                    AsyncImage(
+                        model = resolvedUrl ?: stickerContent.url,
+                        contentDescription = stickerContent.body,
+                        modifier = Modifier
+                            .size(150.dp)
+                            .padding(4.dp)
+                    )
+                    Text(
+                        text = stickerContent.body,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+            } else {
+                val displayBody = messageContent?.body
+                    ?: if (event.root.isEncrypted()) "[Encrypted - Verify Device to read]"
+                    else "[Unsupported event: ${event.root.getClearType()}]"
+
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isMe) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    Text(
+                        text = displayBody,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+            }
+        }
+
+        if (isMe) {
+            Spacer(Modifier.width(8.dp))
+            if (senderAvatarUrl != null) {
+                AsyncImage(
+                    model = senderAvatarUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = (event.senderInfo.displayName ?: event.root.senderId ?: "?").take(1),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
             }
         }
     }

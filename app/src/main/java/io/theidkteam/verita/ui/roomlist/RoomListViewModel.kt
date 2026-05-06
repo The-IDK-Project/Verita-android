@@ -66,4 +66,6 @@ class RoomListViewModel @Inject constructor(
             session?.signOutService()?.signOut(true, false)
         }
     }
+
+    fun getContentUrlResolver() = session?.contentUrlResolver()
 }

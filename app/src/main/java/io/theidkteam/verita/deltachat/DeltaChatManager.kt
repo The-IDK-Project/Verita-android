@@ -31,7 +31,7 @@ class DeltaChatManager @Inject constructor() {
             // Mock data for beta
             flowOf(
                 listOf(
-                    DeltaChatRoom("dc_1", "Delta Chat User", "Hello from Delta Chat! 📧", "14:20"),
+                    DeltaChatRoom("dc_1", "Delta Chat User", "Hello from Delta Chat!", "14:20"),
                     DeltaChatRoom("dc_2", "Email Group", "Discussion about privacy", "Yesterday")
                 )
             )

@@ -18,6 +18,7 @@ import io.theidkteam.verita.ui.login.LoginScreen
 import io.theidkteam.verita.ui.roomlist.RoomListScreen
 import io.theidkteam.verita.ui.settings.SettingsScreen
 import io.theidkteam.verita.ui.theme.VeritaTheme
+import io.theidkteam.verita.ui.verification.VerificationScreen
 import java.util.Locale
 import javax.inject.Inject
 
@@ -74,7 +75,8 @@ class MainActivity : ComponentActivity() {
                             "chat" -> currentRoomId?.let { roomId ->
                                 ChatScreen(
                                     roomId = roomId,
-                                    onBack = { currentScreen = "room_list" }
+                                    onBack = { currentScreen = "room_list" },
+                                    onNavigateToVerification = { currentScreen = "verification" }
                                 )
                             }
                             "login" -> LoginScreen(
@@ -82,7 +84,11 @@ class MainActivity : ComponentActivity() {
                             )
                             "settings" -> SettingsScreen(
                                 settingsManager = settingsManager,
-                                onBack = { currentScreen = "room_list" }
+                                onBack = { currentScreen = "room_list" },
+                                onNavigateToVerification = { currentScreen = "verification" }
+                            )
+                            "verification" -> VerificationScreen(
+                                onBack = { currentScreen = "settings" }
                             )
                         }
                     }
