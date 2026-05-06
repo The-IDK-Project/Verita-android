@@ -10,9 +10,15 @@ import io.theidkteam.verita.data.SettingsManager
 @Composable
 fun VeritaTheme(
     settingsManager: SettingsManager,
-    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
+    val isSystemDark = isSystemInDarkTheme()
+    val darkTheme = when (settingsManager.themeMode) {
+        "Dark" -> true
+        "Light" -> false
+        else -> isSystemDark
+    }
+
     val primaryColor = Color(
         settingsManager.primaryR,
         settingsManager.primaryG,

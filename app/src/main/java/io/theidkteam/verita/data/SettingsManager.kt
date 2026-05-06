@@ -28,6 +28,13 @@ class SettingsManager @Inject constructor(
     var language by mutableStateOf(prefs.getString("language", "en") ?: "en")
     var chatBackgroundUri by mutableStateOf(prefs.getString("chat_background_uri", "") ?: "")
 
+    var themeMode by mutableStateOf(prefs.getString("theme_mode", "System") ?: "System") // Light, Dark, System
+
+    fun saveThemeMode(mode: String) {
+        themeMode = mode
+        prefs.edit().putString("theme_mode", mode).apply()
+    }
+
     fun saveLanguage(langCode: String) {
         language = langCode
         prefs.edit().putString("language", langCode).apply()

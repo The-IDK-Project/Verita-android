@@ -30,6 +30,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import org.matrix.android.sdk.api.session.room.model.RoomSummary
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import io.theidkteam.verita.deltachat.DeltaChatRoom
+import androidx.compose.material.icons.filled.Email
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination
@@ -40,20 +42,33 @@ fun RoomListScreen(
     onNavigateToChat: (String) -> Unit,
     viewModel: RoomListViewModel = hiltViewModel()
 ) {
-    val rooms by viewModel.rooms?.collectAsState(initial = emptyList()) ?: remember { mutableStateOf(emptyList<RoomSummary>()) }
+    val rooms by viewModel.rooms.collectAsState(initial = emptyList())
+    val deltaRooms by viewModel.deltaRooms.collectAsState(initial = emptyList())
+    val syncState by viewModel.syncState.collectAsState()
     
     var selectedFolder by remember { mutableStateOf("All") }
-    val folders = listOf("All", "Personal", "Groups", "Channels", "Bots")
+    val folders = listOf("All", "Personal", "Delta Chat (Beta)", "Groups", "Channels", "Bots")
 
     val filteredRooms = remember(rooms, selectedFolder) {
         when (selectedFolder) {
             "Personal" -> rooms.filter { it.isDirect }
             "Groups" -> rooms.filter { !it.isDirect }
-            "Channels" -> rooms.filter { it.roomId.contains("channel") } // Heuristic
+            "Channels" -> rooms.filter { it.roomId.contains("channel") || it.roomId.contains("space") }
             "Bots" -> rooms.filter { it.displayName.contains("bot", ignoreCase = true) }
             else -> rooms
         }
     }
+
+    val filteredDeltaRooms = remember(deltaRooms, selectedFolder) {
+        if (selectedFolder == "All" || selectedFolder == "Delta Chat (Beta)") {
+            deltaRooms
+        } else {
+            emptyList()
+        }
+    }
+
+    val isSyncing = syncState is org.matrix.android.sdk.api.session.sync.SyncState.Running
+    val isEmpty = filteredRooms.isEmpty() && filteredDeltaRooms.isEmpty()
     
     // Demo data for design purposes if no real rooms
     val demoRooms = listOf(
@@ -89,24 +104,32 @@ fun RoomListScreen(
                     }
                 )
                 
-                // Folder Tabs (Horizontal Scrollable)
+                // Folder Tabs
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
                         .padding(horizontal = 8.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     folders.forEach { folder ->
                         val isSelected = selectedFolder == folder
                         FilterChip(
                             selected = isSelected,
                             onClick = { selectedFolder = folder },
-                            label = { Text(folder) },
+                            label = { 
+                                Text(if (folder == "Delta Chat (Beta)") "Delta Chat 🧪" else folder) 
+                            },
                             leadingIcon = if (isSelected) {
                                 { Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(16.dp)) }
                             } else null
                         )
+                    }
+                    
+                    if (isSyncing) {
+                        Spacer(Modifier.width(8.dp))
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     }
                 }
             }
@@ -117,12 +140,18 @@ fun RoomListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Special login button if not logged in or as a shortcut
-            if (selectedFolder == "All") {
+            if (selectedFolder == "Delta Chat (Beta)" && deltaRooms.isEmpty()) {
+                item {
+                    DeltaChatBetaPlaceholder(onEnable = { viewModel.enableDeltaChat() })
+                }
+            }
+
+            // Special login button if not logged in
+            if (selectedFolder == "All" && !viewModel.isLogged) {
                 item {
                     ListItem(
-                        headlineContent = { Text("LOGIN TO YOUR ACCOUNT", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) },
-                        supportingContent = { Text("Tap here to sign in with Matrix") },
+                        headlineContent = { Text("CONNECT MATRIX ACCOUNT", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) },
+                        supportingContent = { Text("Sign in to see your Matrix rooms") },
                         leadingContent = { Icon(Icons.Default.Login, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                         modifier = Modifier.clickable { onNavigateToLogin() }
                     )
@@ -130,26 +159,102 @@ fun RoomListScreen(
                 }
             }
 
-            if (rooms.isEmpty()) {
+            if (isEmpty) {
                 item {
-                    Text(
-                        "No real rooms found for category '$selectedFolder'. Showing demo data:",
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            if (isSyncing) "Synchronizing chats..." else "No chats found in '$selectedFolder'",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                        if (!isSyncing && selectedFolder == "All") {
+                            Text(
+                                "Showing demo chats for preview:",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.LightGray,
+                                modifier = Modifier.padding(top = 16.dp)
+                            )
+                        }
+                    }
                 }
-                // Render demo chats
-                items(filteredDemoRooms) { room ->
-                    DemoRoomItem(room = room, onClick = { onNavigateToChat(room.id) })
+                
+                if (selectedFolder == "All" || selectedFolder == "Personal" || selectedFolder == "Groups") {
+                    items(filteredDemoRooms) { room ->
+                        DemoRoomItem(room = room, onClick = { onNavigateToChat(room.id) })
+                    }
                 }
             } else {
+                items(filteredDeltaRooms) { room ->
+                    DeltaChatRoomItem(room = room, onClick = { /* Future */ })
+                }
                 items(filteredRooms) { room ->
                     RealRoomItem(room = room, onClick = { onNavigateToChat(room.roomId) })
                 }
             }
         }
     }
+}
+
+@Composable
+fun DeltaChatBetaPlaceholder(onEnable: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Delta Chat Support (BETA)", fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Delta Chat uses your existing email account as a chat server. " +
+                "We are currently implementing the core engine. Stay tuned!",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = onEnable, modifier = Modifier.align(Alignment.End)) {
+                Text("Enable Demo")
+            }
+        }
+    }
+}
+
+@Composable
+fun DeltaChatRoomItem(room: DeltaChatRoom, onClick: () -> Unit) {
+    ListItem(
+        headlineContent = {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(room.name, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.width(8.dp))
+                    SuggestionChip(
+                        onClick = {},
+                        label = { Text("Beta", fontSize = 10.sp) },
+                        modifier = Modifier.height(20.dp)
+                    )
+                }
+                Text(room.time, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+            }
+        },
+        supportingContent = { Text(room.lastMessage, maxLines = 1, fontSize = 14.sp) },
+        leadingContent = {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFE1F5FE)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Email, contentDescription = null, tint = Color(0xFF0288D1))
+            }
+        },
+        modifier = Modifier.clickable { onClick() }
+    )
 }
 
 @Composable

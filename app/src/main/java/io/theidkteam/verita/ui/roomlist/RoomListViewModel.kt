@@ -4,47 +4,60 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.matrix.android.sdk.api.session.Session
+import org.matrix.android.sdk.api.session.room.model.Membership
 import org.matrix.android.sdk.api.session.room.RoomSummaryQueryParams
 import org.matrix.android.sdk.api.session.room.model.RoomSummary
 import org.matrix.android.sdk.api.session.sync.SyncState
+import io.theidkteam.verita.deltachat.DeltaChatManager
+import io.theidkteam.verita.deltachat.DeltaChatRoom
 import javax.inject.Inject
 
 @HiltViewModel
 class RoomListViewModel @Inject constructor(
-    @org.jetbrains.annotations.Nullable private val session: Session?
+    @org.jetbrains.annotations.Nullable private val session: Session?,
+    private val deltaChatManager: DeltaChatManager
 ) : ViewModel() {
+
+    private val _syncState = MutableStateFlow<SyncState>(SyncState.Idle)
+    val syncState: StateFlow<SyncState> = _syncState
 
     init {
         session?.let { s ->
             if (s.isOpenable) {
                 try {
                     s.open()
-                } catch (t: Throwable) {
-                    // Catch potential AssertionError if already open or other initialization errors
-                }
-                
-                try {
-                    // Only start sync if it's currently Idle to avoid AssertionError
-                    if (s.syncService().getSyncState() is SyncState.Idle) {
+                    
+                    // Safely collect sync state using Flow
+                    s.syncService().getSyncStateLive().asFlow()
+                        .onEach { _syncState.value = it }
+                        .launchIn(viewModelScope)
+                    
+                    if (s.syncService().getSyncState() == SyncState.Idle) {
                         s.syncService().startSync(true)
                     }
                 } catch (t: Throwable) {
-                    // Catch potential AssertionError if session is still not open
+                    // Session might already be open or initialization failed
                 }
             }
         }
     }
 
-    val rooms: Flow<List<RoomSummary>>? = session?.let {
-        val queryParams = RoomSummaryQueryParams.Builder().build()
-        it.roomService().getRoomSummariesLive(queryParams).asFlow()
-    }
+    val isLogged: Boolean = session != null
 
-    override fun onCleared() {
-        super.onCleared()
+    val rooms: Flow<List<RoomSummary>> = session?.let { s ->
+        val queryParams = RoomSummaryQueryParams.Builder().apply {
+            memberships = Membership.all()
+        }.build()
+        s.roomService().getRoomSummariesLive(queryParams).asFlow()
+    } ?: flowOf(emptyList())
+
+    val deltaRooms: Flow<List<DeltaChatRoom>> = deltaChatManager.getDeltaRooms()
+
+    fun enableDeltaChat() {
+        deltaChatManager.setConfigured(true)
     }
 
     fun logout() {
