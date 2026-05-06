@@ -50,14 +50,15 @@ fun SettingsScreen(
             item {
                 SettingsSectionTitle("Appearance")
                 
+                var showThemeDialog by remember { mutableStateOf(false) }
+                
                 SettingsPreferenceItem(
                     title = "Theme",
                     subtitle = "Current: ${settingsManager.themeMode}",
                     icon = Icons.Default.Palette,
-                    onClick = { /* Show dialog */ }
+                    onClick = { showThemeDialog = true }
                 )
 
-                var showThemeDialog by remember { mutableStateOf(false) }
                 if (showThemeDialog) {
                     ThemeSelectionDialog(
                         currentMode = settingsManager.themeMode,
