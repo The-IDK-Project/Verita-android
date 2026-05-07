@@ -40,6 +40,24 @@ class ChatViewModel @Inject constructor(
 
     val myUserId: String? = session?.myUserId
 
+    private val _myAvatarUrl = MutableStateFlow<String?>(null)
+    val myAvatarUrl: StateFlow<String?> = _myAvatarUrl
+
+    private val _myDisplayName = MutableStateFlow<String?>(null)
+    val myDisplayName: StateFlow<String?> = _myDisplayName
+
+    private val _isVerified = MutableStateFlow(false)
+    val isVerified: StateFlow<Boolean> = _isVerified
+
+    init {
+        viewModelScope.launch {
+            val user = session?.userService()?.getUser(session.myUserId ?: "")
+            _isVerified.value = session?.cryptoService()?.crossSigningService()?.isCrossSigningVerified() ?: false
+            _myAvatarUrl.value = user?.avatarUrl
+            _myDisplayName.value = user?.displayName
+        }
+    }
+
     fun initRoom(roomId: String) {
         if (room?.roomId == roomId || currentRoomId == roomId) return
         
@@ -86,14 +104,18 @@ class ChatViewModel @Inject constructor(
 
     fun sendMessage(text: String) {
         if (text.isBlank()) return
+        Log.d("ChatViewModel", "Sending message: $text")
         
         // Capitalize sentences/first letter as requested by user.
-        // Assuming capitalization of sentences/first letter since that's standard for chat.
         val capitalizedText = text.trim().replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
         
         val currentRoom = room
         if (currentRoom != null) {
-            currentRoom.sendService().sendTextMessage(capitalizedText)
+            try {
+                currentRoom.sendService().sendTextMessage(capitalizedText)
+            } catch (e: Throwable) {
+                Log.e("ChatViewModel", "Failed to send message", e)
+            }
         } else {
             // Mock sending for demo purposes
             val myMsg = TestMessage(System.currentTimeMillis().toString(), "Me", capitalizedText)
@@ -116,8 +138,14 @@ class ChatViewModel @Inject constructor(
     }
 
     fun getContentUrlResolver() = session?.contentUrlResolver()
+
+    fun getFileService() = session?.fileService()
     
     fun isRoomEncrypted(): Boolean {
         return room?.roomSummary()?.isEncrypted ?: false
+    }
+
+    fun isKeysBackupEnabled(): Boolean {
+        return session?.cryptoService()?.keysBackupService()?.isEnabled() ?: false
     }
 }

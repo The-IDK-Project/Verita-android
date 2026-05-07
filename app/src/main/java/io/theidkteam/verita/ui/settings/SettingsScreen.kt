@@ -16,6 +16,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,9 +34,26 @@ import io.theidkteam.verita.data.SettingsManager
 fun SettingsScreen(
     settingsManager: SettingsManager,
     onBack: () -> Unit,
-    onNavigateToVerification: () -> Unit
+    onNavigateToVerification: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    LaunchedEffect(Unit) {
+        viewModel.recoveryResult.collectLatest { result ->
+            when (result) {
+                is SettingsViewModel.RecoveryResult.Success -> {
+                    snackbarHostState.showSnackbar("Keys restored successfully!")
+                }
+                is SettingsViewModel.RecoveryResult.Error -> {
+                    snackbarHostState.showSnackbar("Error: ${result.message}")
+                }
+            }
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
@@ -139,7 +158,7 @@ fun SettingsScreen(
                     RecoveryKeyDialog(
                         onDismiss = { showRecoveryDialog = false },
                         onConfirm = { key ->
-                            // TODO: Handle key verification with session.cryptoService()
+                            viewModel.submitRecoveryKey(key)
                             showRecoveryDialog = false
                         }
                     )

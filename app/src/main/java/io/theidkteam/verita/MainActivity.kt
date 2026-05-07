@@ -76,7 +76,8 @@ class MainActivity : ComponentActivity() {
                                 ChatScreen(
                                     roomId = roomId,
                                     onBack = { currentScreen = "room_list" },
-                                    onNavigateToVerification = { currentScreen = "verification" }
+                                    onNavigateToVerification = { currentScreen = "verification" },
+                                    onNavigateToSettings = { currentScreen = "settings" }
                                 )
                             }
                             "login" -> LoginScreen(

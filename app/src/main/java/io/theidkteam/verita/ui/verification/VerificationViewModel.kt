@@ -50,7 +50,13 @@ class VerificationViewModel @Inject constructor(
                     val emojis = tx.getEmojiCodeRepresentation()
                     _verificationState.value = VerificationUIState.EmojiReady(emojis)
                 }
-                is SasTransactionState.Done -> _verificationState.value = VerificationUIState.Verified
+                is SasTransactionState.Done -> {
+                    _verificationState.value = VerificationUIState.Verified
+                    // Request missing secrets (like backup keys) after successful verification
+                    viewModelScope.launch {
+                        session?.sharedSecretStorageService()?.requestMissingSecrets()
+                    }
+                }
                 is SasTransactionState.Cancelled -> _verificationState.value = VerificationUIState.Error("Cancelled")
                 else -> Unit
             }
